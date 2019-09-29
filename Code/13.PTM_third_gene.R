@@ -4,7 +4,7 @@ source('Code/Functions.R')
 Initialize()
 
 ## Possible workflow:
-# 1. Find all the possible third genes which expression is changing/ is a PTM protein
+# 1. Find all the possible third genes which expression is changing + is a PTM protein
 # 2. Check all the hub genes that those candidates interact with
 # 3. Check the literature if you can find anything meaningfull 
 # 4. Check the PPI-pairs for that hub -> are there any new interactions formed in the new condition?
@@ -22,7 +22,10 @@ isInDifExpList <- function(difExp_geneNames){
 }
 
 ListOfConditions <- readRDS('Data/ListOfConditions_IS7.rds')
+combined_degrees <- lapply(ListOfConditions, .getComb_Degree)
 lapply(ListOfConditions, head)
+lapply(combined_degrees, head)
+
 
 kinaseDB <- read.csv('Data/kinase_phospho_table.csv')
 AllKinaseName <- c(kinaseDB$Orf.Name, kinaseDB$Gene.Name)
@@ -37,9 +40,14 @@ head(all_possible_genes_filled)
 
 
 
+##### Thresholds for DE analysis
+FOLD_CHANGE_THRESHOLD = 1.5
+P_VAL_THRESHOLD = 0.2
+
 listOf_tfitTab <- readRDS('Data/listOf_tfitTab_DE_analysis.rds')
 listOf_tfitTab <- listOf_tfitTab[1:3]
-listOf_tfitTab_difExp <- lapply(listOf_tfitTab, function(x) subset(x, ( logFC< -1.5 | logFC > 1.5) & P.Value<0.2))
+listOf_tfitTab_difExp <- lapply(listOf_tfitTab, 
+                                function(x) subset(x, ( logFC< -FOLD_CHANGE_THRESHOLD | logFC > FOLD_CHANGE_THRESHOLD) & P.Value<P_VAL_THRESHOLD))
 difExp_trackIds <- lapply(listOf_tfitTab_difExp, rownames)
 names(difExp_trackIds)
 difExp_geneNames <- sapply(1:3, function(i)expression$gene_short_name[expression$tracking_id %in% difExp_trackIds[[i]]])
@@ -55,21 +63,27 @@ MMS_difExp_df <- subset(all_possible_genes_filled, MMS_difExp)
 H2O2_difExp_df <- subset(all_possible_genes_filled, H2O2_difExp)
 PoorCarbon_difExp_df <- subset(all_possible_genes_filled, PoorCarbon_difExp)
 
-#  all the possible third genes which expression is changing/ is a PTM protein
-PTM_genes_MMS <- MMS_difExp_df$Genes[MMS_difExp_df$Genes %in% AllKinaseName]  
+#  all the possible third genes which expression is changing AND is a PTM protein
+PTM_genes_MMS <- MMS_difExp_df$Genes[MMS_difExp_df$Genes %in% AllKinaseName]  # "YGL158W"
 PTM_genes_H2O2 <- H2O2_difExp_df$Genes[H2O2_difExp_df$Genes %in% AllKinaseName]
 PTM_genes_PoorCarbon <- PoorCarbon_difExp_df$Genes[PoorCarbon_difExp_df$Genes %in% AllKinaseName]
 
 
 
-
 #### Finding pairs of those PTM proteins found in the previous section
-### MMS 
+############ MMS --> "YGL158W"
 PTM_MMS_baseline_pairs <- c(ListOfConditions$MMS$DBORF[ListOfConditions$MMS$ADORF==PTM_genes_MMS], 
                             ListOfConditions$MMS$ADORF[ListOfConditions$MMS$DBORF==PTM_genes_MMS])
 
 PTM_MMS_Stress_pair <- c(ListOfConditions$Baseline$DBORF[ListOfConditions$Baseline$ADORF==PTM_genes_MMS], 
                          ListOfConditions$Baseline$ADORF[ListOfConditions$Baseline$DBORF==PTM_genes_MMS])
+
+
+
+## The assumption is that the PTM protein's expression has changed in the Stress condition and
+### by this change -> new proteins are getting modified in the stress condition which weren't getting 
+### modified before in the baseline condition -> we need to check if this newly affected protein interaction has 
+### by getting modified in the Stress condition
 
 ptm_effected_protein_mms <- PTM_MMS_Stress_pair[!PTM_MMS_Stress_pair %in% PTM_MMS_baseline_pairs]
 
@@ -121,12 +135,21 @@ ptm_df_poorcarbon <- merge(ptm_df_1, pc, by.x='ptm_effected', by.y='Gene', all.x
 ptm_df_poorcarbon[is.na(ptm_df_poorcarbon)] <- 0
 View(ptm_df_poorcarbon)
 
+ptm_df_poorcarbon$PTM
+head(kinaseDB)
+merge(ptm_df_poorcarbon, kinaseDB, by.x='PTM', by.y= 'Orf.Name')
+merge(ptm_df_mms, kinaseDB, by.x='PTM', by.y= 'Orf.Name')
 
-#### 
-ptm_df_poorcarbon
+
+#### Poorcarbon
 getInteractingPairs(ptm_df_poorcarbon$ptm_effected[3],ListOfConditions$Baseline )
+getInteractingPairs(ptm_df_poorcarbon$ptm_effected[3],ListOfConditions$PoorCarbon )
 
-## ToNight:
+### MMS
+getInteractingPairs(ptm_df_mms$ptm_effected[2],ListOfConditions$Baseline )
+getInteractingPairs(ptm_df_mms$ptm_effected[2],ListOfConditions$MMS )
+
+## Tonight:
 # read and document this tonight -> write out all the pairs -> check the literature
 
 

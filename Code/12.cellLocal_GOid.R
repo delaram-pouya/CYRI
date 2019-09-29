@@ -3,11 +3,12 @@
 # 2- Find the set of interacting proteins with them in both conditions
 # 3- Find the localization of each protein based on its interacting pairs in each condition 
 # - Run enrichment analysis of these 2 sets → MMS-set , Baseline-set
-# - Majority vote
+# - Majority vote, fisher exact test
 # 4- for each protein, check if the cellular compartments are actually different in these 2 conditions
 
 source('Code/Functions.R')
 Initialize()
+
 
 ## Function
 getListOfInteractingPairs <- function(sharedGenes , aConditionPPImat){
@@ -33,33 +34,13 @@ getListOfLocalizationForPairConditions <- function(stress_base_ORFS){
     baseline_localiz <- baseline_localiz[!is.na(baseline_localiz) & baseline_localiz!='' ]
     stress_localiz <- stress_localiz[!is.na(stress_localiz) & stress_localiz!='']
     
-    list_localiz <- list(  round(table(baseline_localiz)/sum(table(baseline_localiz)), 2) , 
-                         round(table(stress_localiz)/sum(table(stress_localiz)), 2)  )
+    list_localiz <- list(table(baseline_localiz) , table(stress_localiz))
     names(list_localiz) <- c('baseline_localiz', 'stress_localiz')
     
     return(list_localiz)
   }, simplify = F)
 }
 
-getHighestEnriched_baseline <- function(index, conditional_localization_pair){
-  sample <- conditional_localization_pair[[index]]
-  sample_baseline <- data.frame(sample$baseline_localiz)
-  enrichedGoTerm <- ifelse(nrow(sample_baseline)>0 , 
-                           as.character(sample_baseline[order(sample_baseline$Freq, decreasing = T), ][1,]$baseline_localiz),
-                           '')
-  enrichedGoTerm <- ifelse(length(enrichedGoTerm)>0 & !is.na(enrichedGoTerm) & enrichedGoTerm!='', enrichedGoTerm, '')
-  return(enrichedGoTerm)
-}
-
-getHighestEnriched_stress <- function(index, conditional_localization_pair){
-  sample <- conditional_localization_pair[[index]]
-  sample_stress <- data.frame(sample$stress_localiz)
-  enrichedGoTerm <- ifelse(nrow(sample_stress)>0 , 
-                           as.character(sample_stress[order(sample_stress$Freq, decreasing = T), ][1,]$stress_localiz),
-                           '')
-  enrichedGoTerm <- ifelse(length(enrichedGoTerm)>0 & !is.na(enrichedGoTerm) & enrichedGoTerm!='', enrichedGoTerm, '')
-  return(enrichedGoTerm)
-}
 
 
 getEnriched_GOterms <- function(index, conditional_localization_pair){
@@ -91,6 +72,26 @@ getEnriched_GOterms <- function(index, conditional_localization_pair){
   
   toReturn <- ifelse(length(enrichedGO)>0, enrichedGO, '')
   return(toReturn)
+}
+
+getFisherPvalues <- function(df_merged){
+  sapply(1:nrow(df_merged), 
+         function(GO_index){
+           GO_count_baseline <- df_merged$Freq.baseline[GO_index]
+           otherGO_count_baseline <- sum(df_merged$Freq.baseline[-GO_index])
+           GO_count_stress <- df_merged$Freq.stress[GO_index]
+           otherGO_count_stress <- sum(df_merged$Freq.stress[-GO_index])
+           
+           fisher_table <- data.frame(matrix(data=c(GO_count_baseline,
+                                                    GO_count_stress, 
+                                                    otherGO_count_baseline, 
+                                                    otherGO_count_stress), 
+                                             nrow=2, ncol= 2,byrow = T), row.names = c('GOterm', 'Others'))
+           
+           colnames(fisher_table) <- c('baseline', 'stress')
+           fisher_res <- fisher.test(fisher_table)
+           return(fisher_res$p.value)
+         })
 }
 
 
@@ -145,6 +146,41 @@ tail(poorcarbon_base_ORFS)
 mms_base_ORFS_localizPair <- getListOfLocalizationForPairConditions(mms_base_ORFS)
 h2o2_base_ORFS_localizPair <- getListOfLocalizationForPairConditions(h2o2_base_ORFS)
 poorcarbon_base_localizPair <- getListOfLocalizationForPairConditions(poorcarbon_base_ORFS)
+
+
+index = 200
+length(mms_base_ORFS_localizPair)
+nrow(mms_base_ORFS)
+mms_base_ORFS_localizPair[[index]]
+goList_base.df <- data.frame(mms_base_ORFS_localizPair[[index]]$baseline_localiz)
+goList_stress.df <- data.frame(mms_base_ORFS_localizPair[[index]]$stress_localiz)
+
+goList_merged <-  merge(goList_base.df, goList_stress.df, 
+                        by.x='baseline_localiz', by.y='stress_localiz', all.x=T, all.y=T)
+goList_merged[is.na(goList_merged)] <- 0 
+colnames(goList_merged)[2:3] <- c('Freq.baseline', 'Freq.stress')
+goList_merged$fisher_pval <- getFisherPvalues(goList_merged)
+enriched_terms <- ifelse(goList_merged$fisher_pval<0.05,  
+       goList_merged$baseline_localiz[goList_merged$fisher_pval<0.05], '')
+
+enriched_terms <- enriched_terms[enriched_terms!='']
+
+getEnriched_GOterms()
+
+
+
+
+### Do the fisher test here
+## iterate over all the proteins 
+## for each protein 
+  ## for each GO term 
+    ## construct the frequency table 
+    ## run the fisher-exact test to check of that condition is enriched for that protein
+    ## return the enriched condition for each protein
+    ## return the frequency of enriched protein in the baseline and stress condition
+    ## return the frequency of that GO term in the genome-wide analysis
+
+
 
 
 mms_base_ORFS$enriched <- sapply(1:length(mms_base_ORFS_localizPair),
