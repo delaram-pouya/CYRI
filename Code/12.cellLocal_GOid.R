@@ -43,36 +43,6 @@ getListOfLocalizationForPairConditions <- function(stress_base_ORFS){
 
 
 
-getEnriched_GOterms <- function(index, conditional_localization_pair){
-  
-  ## enrichment -> freq higer in the new condition 0.3
-  sample <- conditional_localization_pair[[index]]
-  sample_baseline <- data.frame(sample$baseline_localiz)
-  sample_stress <- data.frame(sample$stress_localiz)
-  
-  LOG_FOLD_CHANGE_CUTOFF = 2.3
-  ## if the gene is also present in the baseline condition -> log2(stress/baseline >1)
-  presentInBaseline <- as.character(sample_stress$stress_localiz[sample_stress$stress_localiz %in% 
-                                                                   sample_baseline$baseline_localiz])
-  foldChange <- log2((sample_stress$Freq[sample_stress$stress_localiz %in% presentInBaseline]+1e-4) /
-                       (sample_baseline$Freq[sample_baseline$baseline_localiz %in% presentInBaseline]+1e-4))
-  enriched_terms_present <- as.character(sample_stress$stress_localiz[sample_stress$stress_localiz %in% 
-                                                                        presentInBaseline][foldChange>LOG_FOLD_CHANGE_CUTOFF])
-  
-  
-  ## if not present -> freq > 0.3
-  FREQUENCY_THRESHOLD = 0.7
-  absentInBaseline <- as.character(sample_stress$stress_localiz[! sample_stress$stress_localiz %in% 
-                                                                  sample_baseline$baseline_localiz])
-  isAdequate <- absentInBaseline[sample_stress$Freq[sample_stress$stress_localiz %in% absentInBaseline]>FREQUENCY_THRESHOLD]
-  enriched_terms_absent <- ifelse(length(isAdequate)>0, absentInBaseline,'')
-  
-  enrichedGO <- c(enriched_terms_absent, enriched_terms_present)
-  enrichedGO <- enrichedGO[enrichedGO != '' &  !is.na(enrichedGO)]
-  
-  toReturn <- ifelse(length(enrichedGO)>0, enrichedGO, '')
-  return(toReturn)
-}
 
 getFisherPvalues <- function(df_merged){
   sapply(1:nrow(df_merged), 
@@ -93,6 +63,16 @@ getFisherPvalues <- function(df_merged){
            return(fisher_res$p.value)
          })
 }
+
+
+
+
+
+
+
+
+
+
 
 
 ## get a list of proetins in each condition and their degrees
@@ -152,20 +132,49 @@ index = 200
 length(mms_base_ORFS_localizPair)
 nrow(mms_base_ORFS)
 mms_base_ORFS_localizPair[[index]]
-goList_base.df <- data.frame(mms_base_ORFS_localizPair[[index]]$baseline_localiz)
-goList_stress.df <- data.frame(mms_base_ORFS_localizPair[[index]]$stress_localiz)
 
-goList_merged <-  merge(goList_base.df, goList_stress.df, 
-                        by.x='baseline_localiz', by.y='stress_localiz', all.x=T, all.y=T)
-goList_merged[is.na(goList_merged)] <- 0 
-colnames(goList_merged)[2:3] <- c('Freq.baseline', 'Freq.stress')
-goList_merged$fisher_pval <- getFisherPvalues(goList_merged)
-enriched_terms <- ifelse(goList_merged$fisher_pval<0.05,  
-       goList_merged$baseline_localiz[goList_merged$fisher_pval<0.05], '')
+sapply(1:length(mms_base_ORFS_localizPair), 
+       function(index){
+         flag= FALSE
+         print(index)
+         goList_base.df <- data.frame(mms_base_ORFS_localizPair[[index]]$baseline_localiz)
+         goList_stress.df <- data.frame(mms_base_ORFS_localizPair[[index]]$stress_localiz)
+         
+         # if(nrow(goList_stress.df)==0) goList_stress.df=getNAdf() 
+         if(nrow(goList_stress.df)==0 & nrow(goList_base.df)!=0) {
+           goList_merged = data.frame(GO_terms=goList_base.df$baseline_localiz,
+                                      Freq.baseline= goList_base.df$Freq, 
+                                      Freq.stress=rep(0, nrow(goList_base.df)))
+           
+         }else if(nrow(goList_base.df)==0 & nrow(goList_stress.df)!=0){
+           goList_merged = data.frame(GO_terms=goList_stress.df$stress_localiz,
+                                      Freq.baseline= rep(0, nrow(goList_stress.df)), 
+                                      Freq.stress=goList_stress.df$Freq)
+           
+           }else if( nrow(goList_stress.df)==0 & nrow(goList_base.df)==0 ){
+             flag = TRUE
+           }else{
+             goList_merged = merge(goList_base.df, goList_stress.df, by.x='baseline_localiz', by.y='stress_localiz', all.x=T, all.y=T)
+         }
+         
+         if(flag) return('') else{
+           goList_merged[is.na(goList_merged)] <- 0 
+           colnames(goList_merged)<- c('GO_terms', 'Freq.baseline', 'Freq.stress')
+           goList_merged$fisher_pval <- getFisherPvalues(goList_merged)
+           enriched_terms <- ifelse(goList_merged$fisher_pval<0.05,  
+                                    goList_merged$GO_terms[goList_merged$fisher_pval<0.05], '')
+           
+           enriched_terms <- enriched_terms[enriched_terms!='']
+           toReturn <- ifelse(length(enriched_terms)>0, enriched_terms, '')
+           return(toReturn)
+         }       
+       })
 
-enriched_terms <- enriched_terms[enriched_terms!='']
 
-getEnriched_GOterms()
+getNAdf <- function(){ data.frame(stress_localiz=NA, Freq=NA)}
+
+getEnriched_GOterms <- function(){
+}
 
 
 
