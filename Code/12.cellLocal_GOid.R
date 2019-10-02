@@ -21,6 +21,7 @@ getListOfInteractingPairs <- function(sharedGenes , aConditionPPImat){
 }
 
 
+
 getListOfLocalizationForPairConditions <- function(stress_base_ORFS){
   sapply(1:nrow(stress_base_ORFS), function(i){
     
@@ -39,6 +40,7 @@ getListOfLocalizationForPairConditions <- function(stress_base_ORFS){
     return(list_localiz)
   }, simplify = F)
 }
+
 
 ## read the links
 # http://www.biostathandbook.com/fishers.html
@@ -71,9 +73,12 @@ getFisherPvalues <- function(df_merged){
 ## for each GO term 
 ## construct the frequency table 
 ## run the fisher-exact test to check of that condition is enriched for that protein
-## return the enriched condition for each protein
+## return the enriched condition and the accourding P value for each protein
+## output format: GOterm_pvalue
 
 getEnriched_GOterms <- function(stress_base_ORFS_localizPair){
+  P_VALUE_CUT_OFF = 0.1
+  
   sapply(1:length(stress_base_ORFS_localizPair), 
          function(index){
            flag= FALSE
@@ -101,16 +106,35 @@ getEnriched_GOterms <- function(stress_base_ORFS_localizPair){
              goList_merged[is.na(goList_merged)] <- 0 
              colnames(goList_merged)<- c('GO_terms', 'Freq.baseline', 'Freq.stress')
              goList_merged$fisher_pval <- getFisherPvalues(goList_merged)
-             enriched_terms <- ifelse(goList_merged$fisher_pval<0.1,  
-                                      as.character(goList_merged$GO_terms[goList_merged$fisher_pval<0.1]), '')
+             enriched_terms <- ifelse(goList_merged$fisher_pval< P_VALUE_CUT_OFF,  
+                                      as.character(goList_merged$GO_terms[goList_merged$fisher_pval< P_VALUE_CUT_OFF]), '')
              
              enriched_terms <- enriched_terms[enriched_terms!='']
+             enriched_pValues <- goList_merged$fisher_pval[goList_merged$fisher_pval< P_VALUE_CUT_OFF]
+             
              if(length(enriched_terms)>0 ) print(index)
-             toReturn <- ifelse(length(enriched_terms)>0, enriched_terms, '')
+             toReturn <- ifelse(length(enriched_terms)>0, paste0(enriched_terms, '_', enriched_pValues), '')
              return(toReturn)
            }       
          })
 }
+
+
+## cleaning the output gained form getEnriched_GOterms function 
+### and adding the enriched term and pvalue to the table
+
+addEnriched_GOterms <- function(stress_base_ORFS, stress_base_ORFS_localizPair){
+  GoTerm_Pval_pair <- str_split(getEnriched_GOterms(stress_base_ORFS_localizPair), '_')
+  isEnriched <- GoTerm_Pval_pair != ''
+  
+  stress_base_ORFS <- stress_base_ORFS[isEnriched,]
+  GoTerm_Pval_pair <- GoTerm_Pval_pair[isEnriched]
+  
+  stress_base_ORFS$enriched_term <- unlist(lapply(GoTerm_Pval_pair, function(x) x[1]))
+  stress_base_ORFS$pValues <- as.numeric(unlist(lapply(GoTerm_Pval_pair, function(x) x[2])))
+  return(stress_base_ORFS)
+}
+
 
 
 ## return the frequency of enriched GO term in the baseline condition
@@ -126,6 +150,7 @@ getGOtermFreq_inBaseline <- function(stress_base_ORFS_localizPair, stress_base_O
 }
 
 
+
 ## return the frequency of enriched GO term in the stress condition
 getGOtermFreq_inStress <- function(stress_base_ORFS_localizPair, stress_base_ORFS, ORF_NAME, GO_NAME){
   
@@ -137,6 +162,7 @@ getGOtermFreq_inStress <- function(stress_base_ORFS_localizPair, stress_base_ORF
   freq_in_stress = count_in_stress/sum(s$Freq)
   return(round(freq_in_stress, 2))
 }
+
 
 
 ## return the frequency of that GO term in the genome-wide analysis
@@ -157,10 +183,10 @@ addFrequencyAttrib_GO <- function(Results, stress_base_ORFS_localizPair, stress_
                                                                    Results$ORF[i], 
                                                                    Results$enriched_term[i] ))
   
-  ## get the global frequency of the GO term in all the genes that we have 
-  Results <- merge(Results, GlobalGOFreq, by.x='enriched_term', by.y= 'GOterms', all.x=T)
   return(Results)
 }
+
+
 
 
 ## get a list of proetins in each condition and their degrees
@@ -184,16 +210,29 @@ DB_Genes <- lapply(DB_degrees, function(x) data.frame(Gene=x$Gene))
 all_possible_genes <- data.frame(Genes=unique(c(as.character(unlist(AD_Genes)),
                                                 as.character(unlist(DB_Genes)))))
 
-### make this list for all genes
-all_genes_localization <- merge(all_possible_genes, Gomap_localization, 
-                                by.x='Genes', by.y='sys_name' , all.x=T, sort=F)
 
+
+
+### make this list for all genes
 sum(is.na(all_genes_localization$GOnumber))
 nrow(all_genes_localization)
 
+Proteins_in_each_condition <- sapply(1:4, function(i) unique(c(as.character(AD_degrees[[i]]$Gene), 
+                                                               as.character(DB_degrees[[i]]$Gene))), simplify = F)
+names(Proteins_in_each_condition) <- names(AD_degrees)
+Proteins_in_each_condition.df <- lapply(Proteins_in_each_condition, function(x) data.frame(Gene=x) )
 
-GlobalGOFreq <-data.frame(round(table(all_genes_localization$GOnumber)/nrow(all_genes_localization), 2))
-colnames(GlobalGOFreq) = c('GOterms', 'Global_Freq')
+Proteins_in_each_condition.go <- lapply( Proteins_in_each_condition.df, 
+                                         function(x)
+                                           merge(x, Gomap_localization, by.x='Gene', by.y='sys_name' , all.x=T, sort=F))
+
+Proteins_in_each_condition.go.tab <- lapply(Proteins_in_each_condition.go, 
+              function(x) {
+                df = data.frame(table(x$GOnumber))
+                df = df[-1,]
+                colnames(df) = c('GOterm', 'Count')
+                df$Freq = round(df$Count/sum(df$Count), 2)
+                subset(df, select= c(GOterm, Freq))})
 
 
 
@@ -230,26 +269,37 @@ saveRDS(stress_base_ORFS_localizPair, 'Results/listOf_stress_base_ORFS_localizPa
 
 
 ##### Peforming the enrichment analysis based in the GO terms
-mms_base_ORFS$enriched_term <- getEnriched_GOterms(mms_base_ORFS_localizPair)
-mmsRes <- subset(mms_base_ORFS[mms_base_ORFS$enriched_term != '',], select= c(ORF, enriched_term))
 
-h2o2_base_ORFS$enriched_term <- getEnriched_GOterms(h2o2_base_ORFS_localizPair)
-h2o2Res <-subset(h2o2_base_ORFS[h2o2_base_ORFS$enriched_term != '',] , select= c(ORF, enriched_term))
+mmsRes <- addEnriched_GOterms(mms_base_ORFS, mms_base_ORFS_localizPair)
+h2o2Res <- addEnriched_GOterms(h2o2_base_ORFS, h2o2_base_ORFS_localizPair)
+poorcarbonRes <- addEnriched_GOterms(poorcarbon_base_ORFS, poorcarbon_base_localizPair)
 
-poorcarbon_base_ORFS$enriched_term <- getEnriched_GOterms(poorcarbon_base_localizPair)
-poorcarbonRes <- subset(poorcarbon_base_ORFS[poorcarbon_base_ORFS$enriched_term != '',], select= c(ORF, enriched_term))
+mmsRes <- subset(mmsRes, select=c('ORF', 'enriched_term', 'pValues'))
+h2o2Res <- subset(h2o2Res, select=c('ORF', 'enriched_term', 'pValues'))
+poorcarbonRes <- subset(poorcarbonRes, select=c('ORF', 'enriched_term', 'pValues'))
+
 
 stress_base_ORFS_list <- list(mms_base_ORFS, h2o2_base_ORFS, poorcarbon_base_ORFS)
 names(stress_base_ORFS_list) <- c('MMS', 'H2O2', 'PoorCarbon')
 saveRDS(stress_base_ORFS_list, 'Results/listOf_localPartenrs_stress_base.rds')
 
 
-
-
 ####### Adding all the frequency attributes
 mmsRes = addFrequencyAttrib_GO(mmsRes, mms_base_ORFS_localizPair, mms_base_ORFS )
 h2o2Res= addFrequencyAttrib_GO(h2o2Res, h2o2_base_ORFS_localizPair, h2o2_base_ORFS )
 poorcarbonRes = addFrequencyAttrib_GO(poorcarbonRes, poorcarbon_base_localizPair, poorcarbon_base_ORFS )
+
+
+
+#### Adding Global attributes
+mmsRes = merge(mmsRes, Proteins_in_each_condition.go.tab$Baseline, by.x='enriched_term', by.y= 'GOterm', all.x=T)
+colnames(mmsRes)[ncol(mmsRes)] <- 'GO.Global.freq.Baseline'
+mmsRes = merge(mmsRes, Proteins_in_each_condition.go.tab$MMS, by.x='enriched_term', by.y= 'GOterm', all.x=T)
+colnames(mmsRes)[ncol(mmsRes)] <- 'GO.Global.freq.Stress'
+head(mmsRes)
+
+
+
 
 write.csv(mmsRes, '../Desktop/mmsRes.csv')
 write.csv(h2o2Res, '../Desktop/h2o2Res.csv')
