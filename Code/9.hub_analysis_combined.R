@@ -29,7 +29,7 @@ h2o2_increased <- subset(comb_result_matrix, Baseline==0 & H2O2 > 0 )
 mms_increased <- subset(comb_result_matrix, Baseline==0 & MMS > 0 )
 poorcarbon_increased <- subset(comb_result_matrix, Baseline==0 & PoorCarbon > 0 ) 
 
-listOf_tfitTab <- readRDS('listOf_tfitTab_DE_analysis.rds')
+listOf_tfitTab <- readRDS('Data/listOf_tfitTab_DE_analysis.rds')
 lapply(listOf_tfitTab, head)
 listOf_DE <- lapply(listOf_tfitTab, function(x) subset(x, (logFC>2 | logFC< (-2)) & (P.Value<0.05) & (adj.P.Val<0.05)  ))
 lapply(listOf_DE, head)
@@ -43,6 +43,25 @@ DE_genes_Base.vs.PoorCarbon <- getDEgenes(rownames(listOf_DE$Base.vs.PoorCarbon)
 h2o2_increased[h2o2_increased$stand_name %in% DE_genes_Base.vs.H2O2, ] #none
 mms_increased[mms_increased$stand_name %in% DE_genes_Base.vs.MMS, ] # none
 poorcarbon_increased[poorcarbon_increased$stand_name %in% DE_genes_Base.vs.PoorCarbon, ] ## 2 are DE
+
+### MMS
+mms_increased$logFCDeg <- (mms_increased$Freq_MMS+0.1)/(mms_increased$Freq_Baseline+0.1)
+mms_increased <- mms_increased[order(mms_increased$logFCDeg, decreasing = T),]
+
+### H2O2
+h2o2_increased$logFCDeg <- (h2o2_increased$Freq_H2O2+0.1)/(h2o2_increased$Freq_Baseline+0.1)
+h2o2_increased <- h2o2_increased[order(h2o2_increased$logFCDeg, decreasing = T),]
+
+### PoorCarbon
+poorcarbon_increased$logFCDeg <- (poorcarbon_increased$Freq_PoorCarbon+0.1)/(poorcarbon_increased$Freq_Baseline+0.1)
+poorcarbon_increased <- poorcarbon_increased[order(poorcarbon_increased$logFCDeg, decreasing = T),]
+
+
+
+write.csv(mms_increased, 'Results/Result_Tables/Combined/mms_increased.csv')
+write.csv(h2o2_increased, 'Results/Result_Tables/Combined/h2o2_increased.csv')
+write.csv(poorcarbon_increased, 'Results/Result_Tables/Combined/poorcarbon_increased.csv')
+
 
 
 

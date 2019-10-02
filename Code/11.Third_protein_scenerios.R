@@ -159,7 +159,7 @@ ThirdProtein.mms <- merge(ThirdProtein.mms, ppi_exp_merged, by.x='Var1', by.y='s
 ## check for each condition, which protein's expression has increased 
 ##    -> list of increased expression in mms/baseline expression 
 
-## expression of first 2 genes don't chnage
+## expression of first 2 genes don't changed
 ### p values
 
 ThirdPr_final_mms

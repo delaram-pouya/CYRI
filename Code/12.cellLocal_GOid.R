@@ -40,7 +40,6 @@ getListOfLocalizationForPairConditions <- function(stress_base_ORFS){
   }, simplify = F)
 }
 
-
 ## read the links
 # http://www.biostathandbook.com/fishers.html
 # https://www.r-bloggers.com/contingency-tables-–-fisher’s-exact-test/
@@ -73,8 +72,6 @@ getFisherPvalues <- function(df_merged){
 ## construct the frequency table 
 ## run the fisher-exact test to check of that condition is enriched for that protein
 ## return the enriched condition for each protein
-## return the frequency of enriched protein in the baseline and stress condition
-## return the frequency of that GO term in the genome-wide analysis
 
 getEnriched_GOterms <- function(stress_base_ORFS_localizPair){
   sapply(1:length(stress_base_ORFS_localizPair), 
@@ -116,7 +113,7 @@ getEnriched_GOterms <- function(stress_base_ORFS_localizPair){
 }
 
 
-
+## return the frequency of enriched GO term in the baseline condition
 getGOtermFreq_inBaseline <- function(stress_base_ORFS_localizPair, stress_base_ORFS, ORF_NAME, GO_NAME){
   
   target_orf_info = stress_base_ORFS_localizPair[[which(stress_base_ORFS$ORF==ORF_NAME)]]
@@ -129,7 +126,7 @@ getGOtermFreq_inBaseline <- function(stress_base_ORFS_localizPair, stress_base_O
 }
 
 
-
+## return the frequency of enriched GO term in the stress condition
 getGOtermFreq_inStress <- function(stress_base_ORFS_localizPair, stress_base_ORFS, ORF_NAME, GO_NAME){
   
   target_orf_info = stress_base_ORFS_localizPair[[which(stress_base_ORFS$ORF==ORF_NAME)]]
@@ -142,8 +139,7 @@ getGOtermFreq_inStress <- function(stress_base_ORFS_localizPair, stress_base_ORF
 }
 
 
-
-
+## return the frequency of that GO term in the genome-wide analysis
 addFrequencyAttrib_GO <- function(Results, stress_base_ORFS_localizPair, stress_base_ORFS){
   ### mapping GO terms to their pathways (C)
   Results = merge(Results, GO_pathway_dict, by.x=c('enriched_term'), by.y=c('GOnumber'), all.x=T)
@@ -154,7 +150,6 @@ addFrequencyAttrib_GO <- function(Results, stress_base_ORFS_localizPair, stress_
                                                                        stress_base_ORFS, 
                                                                        Results$ORF[i], 
                                                                        Results$enriched_term[i] ))
-  
   ## add the frequency of that GO term in the stress condition
   Results$GOfreqStress = sapply(1:nrow(Results), 
                                 function(i) getGOtermFreq_inStress(stress_base_ORFS_localizPair, 
@@ -166,7 +161,6 @@ addFrequencyAttrib_GO <- function(Results, stress_base_ORFS_localizPair, stress_
   Results <- merge(Results, GlobalGOFreq, by.x='enriched_term', by.y= 'GOterms', all.x=T)
   return(Results)
 }
-
 
 
 ## get a list of proetins in each condition and their degrees
@@ -225,11 +219,14 @@ tail(h2o2_base_ORFS)
 tail(poorcarbon_base_ORFS)
 
 
-
 ### how exactly should I compare these two list?
 mms_base_ORFS_localizPair <- getListOfLocalizationForPairConditions(mms_base_ORFS)
 h2o2_base_ORFS_localizPair <- getListOfLocalizationForPairConditions(h2o2_base_ORFS)
 poorcarbon_base_localizPair <- getListOfLocalizationForPairConditions(poorcarbon_base_ORFS)
+
+stress_base_ORFS_localizPair <- list(mms_base_ORFS_localizPair, h2o2_base_ORFS_localizPair, poorcarbon_base_localizPair)
+names(stress_base_ORFS_localizPair) <- c('MMS', 'H2O2', 'PoorCarbon')
+saveRDS(stress_base_ORFS_localizPair, 'Results/listOf_stress_base_ORFS_localizPair.rds')
 
 
 ##### Peforming the enrichment analysis based in the GO terms
@@ -242,18 +239,21 @@ h2o2Res <-subset(h2o2_base_ORFS[h2o2_base_ORFS$enriched_term != '',] , select= c
 poorcarbon_base_ORFS$enriched_term <- getEnriched_GOterms(poorcarbon_base_localizPair)
 poorcarbonRes <- subset(poorcarbon_base_ORFS[poorcarbon_base_ORFS$enriched_term != '',], select= c(ORF, enriched_term))
 
+stress_base_ORFS_list <- list(mms_base_ORFS, h2o2_base_ORFS, poorcarbon_base_ORFS)
+names(stress_base_ORFS_list) <- c('MMS', 'H2O2', 'PoorCarbon')
+saveRDS(stress_base_ORFS_list, 'Results/listOf_localPartenrs_stress_base.rds')
+
+
+
 
 ####### Adding all the frequency attributes
 mmsRes = addFrequencyAttrib_GO(mmsRes, mms_base_ORFS_localizPair, mms_base_ORFS )
 h2o2Res= addFrequencyAttrib_GO(h2o2Res, h2o2_base_ORFS_localizPair, h2o2_base_ORFS )
 poorcarbonRes = addFrequencyAttrib_GO(poorcarbonRes, poorcarbon_base_localizPair, poorcarbon_base_ORFS )
 
-head(mmsRes)
-
-
-
-
-
+write.csv(mmsRes, '../Desktop/mmsRes.csv')
+write.csv(h2o2Res, '../Desktop/h2o2Res.csv')
+write.csv(poorcarbonRes, '../Desktop/poorcarbonRes.csv')
 
 
 
