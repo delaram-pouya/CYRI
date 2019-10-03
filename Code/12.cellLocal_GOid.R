@@ -187,8 +187,6 @@ addFrequencyAttrib_GO <- function(Results, stress_base_ORFS_localizPair, stress_
 }
 
 
-
-
 ## get a list of proetins in each condition and their degrees
 ListOfConditions <- readRDS('Data/ListOfConditions_IS7.rds')
 combined_degrees <- lapply(ListOfConditions, .getComb_Degree)
@@ -212,11 +210,6 @@ all_possible_genes <- data.frame(Genes=unique(c(as.character(unlist(AD_Genes)),
 
 
 
-
-### make this list for all genes
-sum(is.na(all_genes_localization$GOnumber))
-nrow(all_genes_localization)
-
 Proteins_in_each_condition <- sapply(1:4, function(i) unique(c(as.character(AD_degrees[[i]]$Gene), 
                                                                as.character(DB_degrees[[i]]$Gene))), simplify = F)
 names(Proteins_in_each_condition) <- names(AD_degrees)
@@ -226,7 +219,8 @@ Proteins_in_each_condition.go <- lapply( Proteins_in_each_condition.df,
                                          function(x)
                                            merge(x, Gomap_localization, by.x='Gene', by.y='sys_name' , all.x=T, sort=F))
 
-Proteins_in_each_condition.go.tab <- lapply(Proteins_in_each_condition.go, 
+
+Proteins_in_each_condition.go.Freq.table <- lapply(Proteins_in_each_condition.go, 
               function(x) {
                 df = data.frame(table(x$GOnumber))
                 df = df[-1,]
@@ -235,6 +229,14 @@ Proteins_in_each_condition.go.tab <- lapply(Proteins_in_each_condition.go,
                 subset(df, select= c(GOterm, Freq))})
 
 
+Proteins_in_each_condition.go.Count.table <- lapply(Proteins_in_each_condition.go, 
+                                                   function(x) {
+                                                     df = data.frame(table(x$GOnumber))
+                                                     df = df[-1,]
+                                                     colnames(df) = c('GOterm', 'Count')
+                                                     return(df)})
+
+saveRDS(Proteins_in_each_condition.go.Count.table, 'Results/Proteins_in_each_condition.go.Count.table.rds')
 
 # 1- have a list of proteins which are present in both states, 
 mms_base_ORFS <- data.frame(ORF=intersect(combined_degrees$Baseline$Gene, combined_degrees$MMS$Gene))
@@ -258,6 +260,8 @@ tail(h2o2_base_ORFS)
 tail(poorcarbon_base_ORFS)
 
 
+
+
 ### how exactly should I compare these two list?
 mms_base_ORFS_localizPair <- getListOfLocalizationForPairConditions(mms_base_ORFS)
 h2o2_base_ORFS_localizPair <- getListOfLocalizationForPairConditions(h2o2_base_ORFS)
@@ -278,23 +282,23 @@ mmsRes <- subset(mmsRes, select=c('ORF', 'enriched_term', 'pValues'))
 h2o2Res <- subset(h2o2Res, select=c('ORF', 'enriched_term', 'pValues'))
 poorcarbonRes <- subset(poorcarbonRes, select=c('ORF', 'enriched_term', 'pValues'))
 
-
 stress_base_ORFS_list <- list(mms_base_ORFS, h2o2_base_ORFS, poorcarbon_base_ORFS)
 names(stress_base_ORFS_list) <- c('MMS', 'H2O2', 'PoorCarbon')
 saveRDS(stress_base_ORFS_list, 'Results/listOf_localPartenrs_stress_base.rds')
 
 
+
 ####### Adding all the frequency attributes
 mmsRes = addFrequencyAttrib_GO(mmsRes, mms_base_ORFS_localizPair, mms_base_ORFS )
-h2o2Res= addFrequencyAttrib_GO(h2o2Res, h2o2_base_ORFS_localizPair, h2o2_base_ORFS )
+h2o2Res = addFrequencyAttrib_GO(h2o2Res, h2o2_base_ORFS_localizPair, h2o2_base_ORFS )
 poorcarbonRes = addFrequencyAttrib_GO(poorcarbonRes, poorcarbon_base_localizPair, poorcarbon_base_ORFS )
 
 
 
 #### Adding Global attributes
-mmsRes = merge(mmsRes, Proteins_in_each_condition.go.tab$Baseline, by.x='enriched_term', by.y= 'GOterm', all.x=T)
+mmsRes = merge(mmsRes, Proteins_in_each_condition.go.Freq.table$Baseline, by.x='enriched_term', by.y= 'GOterm', all.x=T)
 colnames(mmsRes)[ncol(mmsRes)] <- 'GO.Global.freq.Baseline'
-mmsRes = merge(mmsRes, Proteins_in_each_condition.go.tab$MMS, by.x='enriched_term', by.y= 'GOterm', all.x=T)
+mmsRes = merge(mmsRes, Proteins_in_each_condition.go.Freq.table$MMS, by.x='enriched_term', by.y= 'GOterm', all.x=T)
 colnames(mmsRes)[ncol(mmsRes)] <- 'GO.Global.freq.Stress'
 head(mmsRes)
 
