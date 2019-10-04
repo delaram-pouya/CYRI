@@ -111,14 +111,12 @@ sink()
 # calculate 2 other p-values for comparing the GO (or the protein??) with the global amount 
 # check the code
 
-# Annotate the proteins in the baseline condition by their neigbours -> find the localization -> pvalue by fisher exact test
+# Annotate the proteins in the baseline condition by their neighbours -> find the localization -> pvalue by fisher exact test
 ##  -> Check if the GO annotation of proteins is consistent with this method of localization annotation
 ###  -> Check the HURI paper -> what was their approach for solving this 
 
 # Compare with branda andrew lab results with HU with the mms results (same as the brown data)
 
 ## summerize the resuts and put them together -> make slides -> transfer the final results to DK
-
-
 
 

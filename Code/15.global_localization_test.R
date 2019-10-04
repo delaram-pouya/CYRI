@@ -17,16 +17,6 @@ combined_degrees <- lapply(ListOfConditions, .getComb_Degree)
 lapply(combined_degrees, head)
 
 
-#### Functions
-## iterate over all the proteins 
-## for each protein 
-## for each GO term 
-## construct the frequency table 
-## run the fisher-exact test to check if a GO term is enriched
-## return the enriched condition and the accourding P value for each protein
-## output format: GOterm_pvalue
-
-
 
 getListOfInteractingPairs <- function(sharedGenes , aConditionPPImat){
   sapply(1:nrow(sharedGenes), 
@@ -149,7 +139,6 @@ getFinalSubset <- function(ORFS){
 
 
 ############## Baseline
-
 ## make a list of ORFs in a condition & find their interacting pairs, map the protein names to the GO number
 base_ORFS <- getCompletePairingTable(combined_degrees$Baseline,  ListOfConditions$Baseline)
 ### for all the ORFs, find the enriched GO term and its p.value 
@@ -164,30 +153,54 @@ sum(base_ORFS_localized$Consistent.loc >0)/nrow(base_ORFS_localized)  # 0.241935
 mms_ORFS <- getCompletePairingTable(combined_degrees$MMS,  ListOfConditions$MMS)
 mms_ORFS <- getCompleteEnrichments(mms_ORFS, Proteins_in_each_condition.go.Count.table$MMS)
 mms_ORFS_localized <- getFinalSubset(mms_ORFS)
-sum(mms_ORFS_localized$Consistent.loc >0)/nrow(mms_ORFS_localized) # 0.07756813
+sum(mms_ORFS_localized$Consistent.loc >0)/nrow(mms_ORFS_localized) # 0.2285115
 
 
 ############## H2O2
 h2o2_ORFS <- getCompletePairingTable(combined_degrees$H2O2,  ListOfConditions$H2O2)
 h2o2_ORFS <- getCompleteEnrichments(h2o2_ORFS, Proteins_in_each_condition.go.Count.table$H2O2)
 h2o2_ORFS_localized <- getFinalSubset(h2o2_ORFS)
-sum(h2o2_ORFS_localized$Consistent.loc >0)/nrow(h2o2_ORFS_localized) # 0.08126411
+sum(h2o2_ORFS_localized$Consistent.loc >0)/nrow(h2o2_ORFS_localized) # 0.2121896
 
 
 ############## PoorCarbon
 poorcarbon_ORFS <- getCompletePairingTable(combined_degrees$PoorCarbon,  ListOfConditions$PoorCarbon)
 poorcarbon_ORFS <- getCompleteEnrichments(poorcarbon_ORFS, Proteins_in_each_condition.go.Count.table$PoorCarbon)
 poorcarbon_ORFS_localized <- getFinalSubset(poorcarbon_ORFS)
-sum(poorcarbon_ORFS_localized$Consistent.loc >0)/nrow(poorcarbon_ORFS_localized) # 0.08896797
+sum(poorcarbon_ORFS_localized$Consistent.loc >0)/nrow(poorcarbon_ORFS_localized) # 0.1921708
+
+
+
+listOfGlobal_GO_enrichments = list(base_ORFS_localized, mms_ORFS_localized, h2o2_ORFS_localized, poorcarbon_ORFS_localized)
+names(listOfGlobal_GO_enrichments) <- c('baseline', 'mms', 'h2o2', 'poorcarbon')
+saveRDS(listOfGlobal_GO_enrichments, 'Results/list_Of_GO_enriched_Global_localizations.rds')
 
 
 
 ## Go through the same procedure 
-## for the other conditions as well 
 ## in the way of checking the consistency valid? -> talk to DK
 
 # calculate 2 other p-values for comparing the GO (or the protein??) with the global amount 
 
 ## add these 2 p.values to the table made in the other script for mms at least
 
+### random network -> higher than that 
+### swap random nodes -> show that it is better than random network
+
+## use this randomized network -> not labell swapping 
+# degree controled randomization -> 
+## odd ration between the protein 
+## network 
+
+## install cytoscape -> visualize -> color each node -> color with respect to visualization -> use officail name
+## 
+
+library(igraph)
+set.seed(1)
+gs <- list()
+for (x in seq_len(20L)) {
+  gs[[x]] <- erdos.renyi.game(sample(1:100, 1), p.or.m = runif(1))
+  E(gs[[x]])$weight <- sample(1:5, ecount(gs[[x]]), T)
+}
+plot(gs[[1]], edge.width = E(gs[[1]])$weight) # plot first graph
 

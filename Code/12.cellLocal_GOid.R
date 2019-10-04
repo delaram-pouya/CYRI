@@ -187,6 +187,19 @@ addFrequencyAttrib_GO <- function(Results, stress_base_ORFS_localizPair, stress_
 }
 
 
+#### Adding Global frequency attributes
+add.Global.attributes <- function(Result.tab , baseline.global.go.freqs, stress.global.go.freqs){
+  
+  Result.tab = merge(Result.tab, baseline.global.go.freqs, by.x='enriched_term', by.y= 'GOterm', all.x=T)
+  colnames(Result.tab)[ncol(Result.tab)] <- 'GO.Global.freq.Baseline'
+  
+  Result.tab = merge(Result.tab, stress.global.go.freqs , by.x='enriched_term', by.y= 'GOterm', all.x=T)
+  colnames(Result.tab)[ncol(Result.tab)] <- 'GO.Global.freq.Stress'
+  
+  return(Result.tab)
+}
+
+
 ## get a list of proetins in each condition and their degrees
 ListOfConditions <- readRDS('Data/ListOfConditions_IS7.rds')
 combined_degrees <- lapply(ListOfConditions, .getComb_Degree)
@@ -293,21 +306,25 @@ mmsRes = addFrequencyAttrib_GO(mmsRes, mms_base_ORFS_localizPair, mms_base_ORFS 
 h2o2Res = addFrequencyAttrib_GO(h2o2Res, h2o2_base_ORFS_localizPair, h2o2_base_ORFS )
 poorcarbonRes = addFrequencyAttrib_GO(poorcarbonRes, poorcarbon_base_localizPair, poorcarbon_base_ORFS )
 
+mmsRes <- add.Global.attributes(mmsRes, 
+                      Proteins_in_each_condition.go.Freq.table$Baseline, 
+                      Proteins_in_each_condition.go.Freq.table$MMS)
+
+h2o2Res <- add.Global.attributes(h2o2Res, 
+                                 Proteins_in_each_condition.go.Freq.table$Baseline, 
+                                 Proteins_in_each_condition.go.Freq.table$H2O2)
+
+poorcarbonRes <- add.Global.attributes(poorcarbonRes, 
+                                       Proteins_in_each_condition.go.Freq.table$Baseline, 
+                                       Proteins_in_each_condition.go.Freq.table$PoorCarbon)
 
 
-#### Adding Global attributes
-mmsRes = merge(mmsRes, Proteins_in_each_condition.go.Freq.table$Baseline, by.x='enriched_term', by.y= 'GOterm', all.x=T)
-colnames(mmsRes)[ncol(mmsRes)] <- 'GO.Global.freq.Baseline'
-mmsRes = merge(mmsRes, Proteins_in_each_condition.go.Freq.table$MMS, by.x='enriched_term', by.y= 'GOterm', all.x=T)
-colnames(mmsRes)[ncol(mmsRes)] <- 'GO.Global.freq.Stress'
-head(mmsRes)
+View(mmsRes)
+write.csv(mmsRes ,'Results/GO_enrich_tabs/mmsRes.csv')
+write.csv(h2o2Res, 'Results/GO_enrich_tabs/h2o2Res.csv')
+write.csv(poorcarbonRes, 'Results/GO_enrich_tabs/poorcarbonRes.csv')
 
 
-
-
-write.csv(mmsRes, '../Desktop/mmsRes.csv')
-write.csv(h2o2Res, '../Desktop/h2o2Res.csv')
-write.csv(poorcarbonRes, '../Desktop/poorcarbonRes.csv')
 
 
 
