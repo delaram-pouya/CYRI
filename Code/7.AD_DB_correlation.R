@@ -3,8 +3,26 @@ Initialize()
 ListOfConditions <- readRDS('Data/ListOfConditions_IS7.rds')
 lapply(ListOfConditions, head)
 #####################
-## check degree correlation between the shared proteins in AD and DB score
 
+## Functions 
+get.AD_DB.list <- function(AD_degrees.condition, DB_degrees.condition){
+  AD_DB <- list(as.character(AD_degrees.condition$Gene), as.character(DB_degrees.condition$Gene))
+  names(AD_DB) <- c('AD', 'DB')
+  return(AD_DB)
+}
+
+
+get.Venn.plot <- function(listToDraw, Title){
+  venn.diagram( listToDraw , NULL, fill=rainbow(2),
+                alpha=c(0.4,0.4), 
+                cex =2.3, cat.fontface=1, 
+                category.names=names(listToDraw), main = Title , main.cex = 2)
+}
+
+
+
+## check degree correlation between the shared proteins in AD and DB score
+## duplicates (ppi) are not removed
 AD_degrees <- lapply(ListOfConditions, .getAD_Degrees)
 DB_degrees <- lapply(ListOfConditions, .getDB_Degrees)
 lapply(AD_degrees, head)
@@ -15,7 +33,33 @@ ListOfHubs_AD <- readRDS( 'Results/ListOfHubs_AD.rds')
 lapply(ListOfHubs_AD, head)
 lapply(ListOfHubs_DB, head)
 
+## how many(percentage) of the PPI pairs are deplicates ?
+lapply(ListOfConditions, 
+       function(x){
+         df = data.frame(table(x$PPI))
+         round(table(df$Freq)/sum(table(df$Freq)), 2)})
 
+
+#### Compare the AD/DB for each condition
+baseline.AD_DB <- get.AD_DB.list(AD_degrees$Baseline, DB_degrees$Baseline)
+grid.draw(get.Venn.plot(baseline.AD_DB, 'Baseline AD/DB'))
+
+h2o2.AD_DB <- get.AD_DB.list(AD_degrees$H2O2, DB_degrees$H2O2)
+grid.draw(get.Venn.plot(h2o2.AD_DB, 'H2O2 AD/DB'))
+
+mms.AD_DB <- get.AD_DB.list(AD_degrees$MMS, DB_degrees$MMS)
+grid.draw(get.Venn.plot(mms.AD_DB, 'MMS AD/DB'))
+
+poorcarbon.AD_DB <- get.AD_DB.list(AD_degrees$PoorCarbon, DB_degrees$PoorCarbon)
+grid.draw(get.Venn.plot(poorcarbon.AD_DB, 'Poor Carbon AD/DB'))
+
+
+
+
+
+  
+  
+  
 AD_DB_shared <- sapply(1:length(AD_degrees), function(i) {
   x = merge(AD_degrees[[i]], DB_degrees[[i]], by.x='Gene', by.y='Gene',all.x=F, all.y=F)
   colnames(x) <- c('Gene', 'AD_degree','DB_degree');x
@@ -81,6 +125,7 @@ pearson <- sapply(1:length(AD_DB_shared), function(i){
 names(pearson) <- names(ListOfConditions)
 lapply(pearson, function(x) x$estimate)
 lapply(pearson, function(x) x$p.value)
+
 
 ###### Spearman Correlation
 spearman <- sapply(1:length(AD_DB_shared), function(i){

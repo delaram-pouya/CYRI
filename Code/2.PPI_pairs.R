@@ -2,7 +2,6 @@
 source('Code/Functions.R')
 Initialize()
 
-# ListOfConditions <- list(Baseline, H2O2, MMS, PoorCarbon)
 ListOfConditions <- readRDS('Data/ListOfConditions_IS7.rds')
 lapply(ListOfConditions, head)
 
@@ -25,7 +24,7 @@ lapply(listOfPPIs, head)
 vennPlot_PPI <- venn.diagram(listOfPPIs , NULL, fill=rainbow(4),
                             alpha=c(0.4,0.4,0.4,0.4), 
                             cex =2.2, cat.fontface=1, 
-                            category.names=names(test), main = 'PPI-pairs comparison', main.cex = 2)
+                            category.names=names(listOfPPIs), main = 'PPI-pairs comparison', main.cex = 2)
 grid.draw(vennPlot_PPI)
 
 getPairPPIMatrix <- function(PPIs){

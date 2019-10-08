@@ -59,8 +59,8 @@ for(i in 1:100) {
 
 
 pred.score <- readRDS('Results/predScores.rds')
-x = data.frame(score=c(pred.score, 0.2419355), category=c(rep('random.Net',length(pred.score)), 'baseline.prediction'))
-ggplot(x, aes(y=score, x=category))+geom_boxplot(aes(fill=category))
+x = data.frame(score=c(pred.score, 0.2419355), category=c(rep('random',length(pred.score)), 'baseline'))
+ggplot(x, aes(y=score, x=category))+geom_boxplot(aes(fill=category))+xlab('')
 
 
 

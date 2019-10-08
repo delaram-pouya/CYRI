@@ -319,10 +319,7 @@ poorcarbonRes <- add.Global.attributes(poorcarbonRes,
                                        Proteins_in_each_condition.go.Freq.table$PoorCarbon)
 
 
-View(mmsRes)
-write.csv(mmsRes ,'Results/GO_enrich_tabs/mmsRes.csv')
-write.csv(h2o2Res, 'Results/GO_enrich_tabs/h2o2Res.csv')
-write.csv(poorcarbonRes, 'Results/GO_enrich_tabs/poorcarbonRes.csv')
+### the csv files were writtein here
 
 
 
